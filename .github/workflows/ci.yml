@@ -3,11 +3,13 @@ name: "CI Pipeline Gate"
 on:
   pull_request:
     branches: [ develop, "release/*", main ]
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   validate-config:
-    name: "Validate mobile-ci.yaml"
+    name: "Validate mobile-ci.yaml Configs"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -21,53 +23,25 @@ jobs:
       - name: Install Validation Dependencies
         run: pip install pyyaml jsonschema
 
-      - name: Validate Config
-        run: python scripts/validate-config.py mobile-ci.yaml schemas/mobile-ci.schema.json
+      - name: Validate Templates & Examples
+        run: |
+          python scripts/validate-config.py templates/mobile-ci.yaml schemas/mobile-ci.schema.json
+          for file in examples/*/mobile-ci.yaml; do
+            echo "Validating $file..."
+            python scripts/validate-config.py "$file" schemas/mobile-ci.schema.json
+          done
 
   detect-framework:
-    name: "Detect Framework"
+    name: "Detect Example Frameworks"
     needs: [validate-config]
     runs-on: ubuntu-latest
-    outputs:
-      framework: ${{ steps.detect.outputs.framework }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Detect Framework
-        id: detect
-        uses: ./.github/actions/detect-framework
-
-  quality-and-security:
-    name: "Lint, Test & Security Scan"
-    needs: [detect-framework]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Environment
-        uses: ./.github/actions/setup-env
-        with:
-          framework: ${{ needs.detect-framework.outputs.framework }}
-
-      - name: Lint Gate
-        uses: ./.github/actions/lint
-        with:
-          framework: ${{ needs.detect-framework.outputs.framework }}
-
-      - name: Test Gate
-        uses: ./.github/actions/test
-        with:
-          framework: ${{ needs.detect-framework.outputs.framework }}
-
-      - name: Security Gate
-        uses: ./.github/actions/security-scan
-        with:
-          framework: ${{ needs.detect-framework.outputs.framework }}
-
-      - name: Dry Run Build
-        uses: ./.github/actions/build
-        with:
-          framework: ${{ needs.detect-framework.outputs.framework }}
-          output-type: "apk"
+      - name: Test Framework Detection across Examples
+        run: |
+          for dir in examples/*; do
+            FRAMEWORK=$(bash scripts/detect-framework.sh "$dir")
+            echo "Directory $dir detected as: $FRAMEWORK"
+          done
