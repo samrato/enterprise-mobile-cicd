@@ -25,6 +25,21 @@ jobs:
         with:
           framework: ${{ steps.detect.outputs.framework }}
 
+      - name: Lint Gate
+        uses: ./.github/actions/lint
+        with:
+          framework: ${{ steps.detect.outputs.framework }}
+
+      - name: Test Gate
+        uses: ./.github/actions/test
+        with:
+          framework: ${{ steps.detect.outputs.framework }}
+
+      - name: Security Scan Gate
+        uses: ./.github/actions/security-scan
+        with:
+          framework: ${{ steps.detect.outputs.framework }}
+
       - name: Build Artifact
         id: build
         uses: ./.github/actions/build
