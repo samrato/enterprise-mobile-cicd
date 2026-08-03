@@ -1,0 +1,66 @@
+name: "Emergency Rollback Pipeline"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Target environment to rollback (development | staging | production)"
+        required: true
+        default: "production"
+      rollback_version_tag:
+        description: "Previous release tag to re-deploy (e.g. v1.2.0)"
+        required: true
+
+jobs:
+  rollback:
+    name: "Rollback Deployment"
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.target_environment }}
+    steps:
+      - name: Checkout Target Release Tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.rollback_version_tag }}
+          fetch-depth: 0
+
+      - name: Detect Framework
+        id: detect
+        uses: ./.github/actions/detect-framework
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+        with:
+          framework: ${{ steps.detect.outputs.framework }}
+
+      - name: Rebuild Artifact
+        id: build
+        uses: ./.github/actions/build
+        with:
+          framework: ${{ steps.detect.outputs.framework }}
+          output-type: "aab"
+
+      - name: Sign Artifact
+        uses: ./.github/actions/signing
+        with:
+          artifact-path: ${{ steps.build.outputs.artifact-path }}
+          keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          key-password: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Re-deploy to Target Track
+        uses: ./.github/actions/deploy-play
+        with:
+          package-name: ${{ vars.ANDROID_APPLICATION_ID || 'com.company.app' }}
+          artifact-path: ${{ steps.build.outputs.artifact-path }}
+          track: ${{ github.event.inputs.target_environment == 'production' && 'production' || (github.event.inputs.target_environment == 'staging' && 'beta' || 'internal') }}
+          service-account-json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+
+      - name: Send Notification
+        if: always()
+        uses: ./.github/actions/notify
+        with:
+          status: ${{ job.status }}
+          environment: ${{ github.event.inputs.target_environment }}
+          version: ${{ github.event.inputs.rollback_version_tag }}
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

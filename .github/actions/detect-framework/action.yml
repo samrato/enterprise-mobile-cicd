@@ -1,0 +1,17 @@
+name: "Detect Mobile Framework"
+description: "Detects whether the repository is a Flutter, React Native, or Native Android application"
+outputs:
+  framework:
+    description: "Detected framework: flutter | react-native | android"
+    value: ${{ steps.detect.outputs.framework }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Framework Detection Script
+      id: detect
+      shell: bash
+      run: |
+        FRAMEWORK=$(bash ${{ github.action_path }}/../../../scripts/detect-framework.sh .)
+        echo "framework=$FRAMEWORK" >> $GITHUB_OUTPUT
+        echo "Detected mobile framework: $FRAMEWORK"

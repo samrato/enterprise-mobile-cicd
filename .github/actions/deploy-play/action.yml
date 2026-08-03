@@ -1,0 +1,32 @@
+name: "Deploy to Google Play Console"
+description: "Publishes signed AAB to Google Play Store internal, beta, or production track"
+inputs:
+  package-name:
+    description: "Android package application ID"
+    required: true
+  artifact-path:
+    description: "Path to signed AAB"
+    required: true
+  track:
+    description: "Play track (internal | beta | production)"
+    required: true
+  service-account-json:
+    description: "Play Service Account JSON credentials"
+    required: true
+  user-fraction:
+    description: "Staged rollout fraction (e.g. 0.1 for 10%)"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Upload to Google Play
+      uses: rslnk/google-play-api-action@v1
+      with:
+        serviceAccountJsonPlainText: ${{ inputs.service-account-json }}
+        packageName: ${{ inputs.package-name }}
+        aabFilePath: ${{ inputs.artifact-path }}
+        track: ${{ inputs.track }}
+        userFraction: ${{ inputs.user-fraction }}
+        inAppUpdatePriority: 2

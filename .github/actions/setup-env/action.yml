@@ -1,0 +1,53 @@
+name: "Setup Mobile Environment & Caching"
+description: "Configures JDK, Flutter SDK, Node.js, and sets up caching for Gradle, Pub, and npm"
+inputs:
+  framework:
+    description: "Framework type (flutter | react-native | android)"
+    required: true
+  jdk-version:
+    description: "Java Development Kit version"
+    required: false
+    default: "17"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Java JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ inputs.jdk-version }}
+
+    - name: Setup Gradle Cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/*.gradle.kts') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Setup Flutter SDK
+      if: ${{ inputs.framework == 'flutter' }}
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+        cache: true
+
+    - name: Setup Node.js & npm Cache
+      if: ${{ inputs.framework == 'react-native' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install React Native Dependencies
+      if: ${{ inputs.framework == 'react-native' }}
+      shell: bash
+      run: npm ci
+
+    - name: Install Flutter Dependencies
+      if: ${{ inputs.framework == 'flutter' }}
+      shell: bash
+      run: flutter pub get

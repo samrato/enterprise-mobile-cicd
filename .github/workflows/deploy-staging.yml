@@ -1,0 +1,58 @@
+name: "Deploy Staging (Play Beta Track)"
+
+on:
+  push:
+    branches: [ "release/*" ]
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    name: "Build & Deploy Staging (Beta Track)"
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Framework
+        id: detect
+        uses: ./.github/actions/detect-framework
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+        with:
+          framework: ${{ steps.detect.outputs.framework }}
+
+      - name: Build Artifact
+        id: build
+        uses: ./.github/actions/build
+        with:
+          framework: ${{ steps.detect.outputs.framework }}
+          output-type: "aab"
+
+      - name: Sign Artifact
+        uses: ./.github/actions/signing
+        with:
+          artifact-path: ${{ steps.build.outputs.artifact-path }}
+          keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          key-password: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Deploy to Play Beta Track
+        uses: ./.github/actions/deploy-play
+        with:
+          package-name: ${{ vars.ANDROID_APPLICATION_ID || 'com.company.app.staging' }}
+          artifact-path: ${{ steps.build.outputs.artifact-path }}
+          track: "beta"
+          service-account-json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+
+      - name: Send Notification
+        if: always()
+        uses: ./.github/actions/notify
+        with:
+          status: ${{ job.status }}
+          environment: "staging"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

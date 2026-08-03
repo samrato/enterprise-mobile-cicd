@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "mobile-ci.yaml",
+  "type": "object",
+  "required": ["version", "framework", "environments"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "framework": {
+      "type": "string",
+      "enum": ["auto", "flutter", "react-native", "android"]
+    },
+    "monorepo": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "apps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "path"],
+            "properties": {
+              "name": { "type": "string" },
+              "path": { "type": "string" },
+              "framework": {
+                "type": "string",
+                "enum": ["auto", "flutter", "react-native", "android"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "environments": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["branch"],
+        "properties": {
+          "branch": { "type": "string" },
+          "android": {
+            "type": "object",
+            "properties": {
+              "applicationId": { "type": "string" },
+              "backendUrl": { "type": "string" },
+              "firebaseProject": { "type": "string" }
+            }
+          },
+          "ios": {
+            "type": "object",
+            "properties": {
+              "bundleId": { "type": "string" }
+            }
+          },
+          "featureFlags": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "string",
+                "enum": ["none", "firebase-remote-config", "launchdarkly"]
+              },
+              "configFile": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "android": {
+      "type": "object",
+      "properties": {
+        "gradleModule": { "type": "string" },
+        "outputType": { "type": "string", "enum": ["aab", "apk"] },
+        "playstore": {
+          "type": "object",
+          "properties": {
+            "internal": { "type": "string" },
+            "beta": { "type": "string" },
+            "production": { "type": "string" },
+            "rollout": {
+              "type": "object",
+              "properties": {
+                "initial": { "type": "integer", "minimum": 1, "maximum": 100 },
+                "increments": {
+                  "type": "array",
+                  "items": { "type": "integer", "minimum": 1, "maximum": 100 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ios": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "scheme": { "type": "string" },
+        "exportMethod": { "type": "string" },
+        "appstore": {
+          "type": "object",
+          "properties": {
+            "groups": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "threshold": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "failUnder": { "type": "boolean" }
+          }
+        },
+        "lint": {
+          "type": "object",
+          "properties": {
+            "failOnWarning": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "dependency_scan": { "type": "boolean" },
+        "secret_scan": { "type": "boolean" },
+        "artifact_checksum": { "type": "boolean" }
+      }
+    },
+    "testing": {
+      "type": "object",
+      "properties": {
+        "unit": { "type": "boolean" },
+        "integration": { "type": "boolean" },
+        "visual_regression": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "provider": { "type": "string", "enum": ["chromatic", "percy"] }
+          }
+        },
+        "performance_regression": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "metric": { "type": "string", "enum": ["apk_size", "startup_time"] },
+            "budgetPercent": { "type": "number" }
+          }
+        }
+      }
+    },
+    "changelog": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "format": { "type": "string", "enum": ["conventional-commits"] }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "properties": {
+        "auto_update": { "type": "boolean" },
+        "provider": { "type": "string", "enum": ["renovate", "dependabot"] }
+      }
+    },
+    "notifications": {
+      "type": "object",
+      "properties": {
+        "slack": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "webhookSecret": { "type": "string" }
+          }
+        },
+        "email": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "to": { "type": "array", "items": { "type": "string" } },
+            "smtpSecret": { "type": "string" }
+          }
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "properties": {
+        "track_metrics": { "type": "boolean" }
+      }
+    }
+  }
+}

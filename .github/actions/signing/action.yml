@@ -1,0 +1,50 @@
+name: "Sign Android Artifact"
+description: "Decodes base64 Android keystore, signs the build artifact with apksigner/jarsigner, and shreds keystore"
+inputs:
+  artifact-path:
+    description: "Path to unsigned AAB / APK"
+    required: true
+  keystore-base64:
+    description: "Base64 encoded keystore"
+    required: true
+  keystore-password:
+    description: "Keystore password"
+    required: true
+  key-alias:
+    description: "Key alias"
+    required: true
+  key-password:
+    description: "Key password"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Decode Keystore
+      shell: bash
+      run: |
+        KEYSTORE_FILE="${RUNNER_TEMP}/release.keystore"
+        echo "${{ inputs.keystore-base64 }}" | base64 -d > "$KEYSTORE_FILE"
+        echo "KEYSTORE_FILE=$KEYSTORE_FILE" >> $GITHUB_ENV
+
+    - name: Sign Artifact with jarsigner / apksigner
+      shell: bash
+      run: |
+        if [[ "${{ inputs.artifact-path }}" == *.aab ]]; then
+          jarsigner -verbose \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore "$KEYSTORE_FILE" \
+            -storepass "${{ inputs.keystore-password }}" \
+            -keypass "${{ inputs.key-password }}" \
+            "${{ inputs.artifact-path }}" ${{ inputs.key-alias }}
+        fi
+
+    - name: Secure Cleanup Keystore
+      if: always()
+      shell: bash
+      run: |
+        if [ -f "$KEYSTORE_FILE" ]; then
+          shred -u "$KEYSTORE_FILE" || rm -f "$KEYSTORE_FILE"
+          echo "Keystore file safely shredded."
+        fi

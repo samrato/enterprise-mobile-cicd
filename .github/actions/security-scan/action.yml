@@ -1,0 +1,21 @@
+name: "Security & Secret Scanning Gate"
+description: "Runs secret detection via gitleaks and checks dependency vulnerabilities"
+inputs:
+  framework:
+    description: "Framework type (flutter | react-native | android)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Gitleaks Secret Scanner
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      continue-on-error: true
+
+    - name: Dependency Audit (npm)
+      if: ${{ inputs.framework == 'react-native' }}
+      shell: bash
+      run: |
+        npm audit --audit-level=high || true

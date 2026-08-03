@@ -1,0 +1,162 @@
+# ==============================================================================
+# mobile-ci.yaml — Enterprise Mobile CI/CD Platform configuration
+#
+# Place this file at the root of your mobile repository. The pipeline reads
+# this file to drive all behavior — nothing is hardcoded in the workflows.
+#
+# Full field reference: docs/CONFIGURATION.md
+# JSON Schema (for IDE validation): schemas/mobile-ci.schema.json
+# ==============================================================================
+
+version: 1
+
+# framework: auto | flutter | react-native | android
+# "auto" runs .github/actions/detect-framework, which looks for pubspec.yaml,
+# package.json + android/app, or a root build.gradle(.kts) with no pubspec/RN
+# markers, in that order.
+framework: auto
+
+# ------------------------------------------------------------------------------
+# Monorepo support (optional). Leave enabled: false for a single-app repo.
+# When enabled, every workflow fans out into a build matrix, one job per app.
+# ------------------------------------------------------------------------------
+monorepo:
+  enabled: false
+  apps: []
+    # - name: consumer-app
+    #   path: apps/consumer
+    #   framework: flutter
+    # - name: driver-app
+    #   path: apps/driver
+    #   framework: react-native
+
+# ------------------------------------------------------------------------------
+# Environments. Each maps to a branch pattern and its own app identity.
+# ------------------------------------------------------------------------------
+environments:
+  development:
+    branch: develop
+    android:
+      applicationId: com.company.app.dev
+      backendUrl: https://api-dev.company.com
+      firebaseProject: company-app-dev
+    ios:
+      bundleId: com.company.app.dev
+    featureFlags:
+      provider: none          # none | firebase-remote-config | launchdarkly
+      configFile: config/flags.dev.json
+
+  staging:
+    branch: "release/*"
+    android:
+      applicationId: com.company.app.staging
+      backendUrl: https://api-staging.company.com
+      firebaseProject: company-app-staging
+    ios:
+      bundleId: com.company.app.staging
+    featureFlags:
+      provider: none
+      configFile: config/flags.staging.json
+
+  production:
+    branch: main
+    android:
+      applicationId: com.company.app
+      backendUrl: https://api.company.com
+      firebaseProject: company-app-prod
+    ios:
+      bundleId: com.company.app
+    featureFlags:
+      provider: none
+      configFile: config/flags.prod.json
+
+# ------------------------------------------------------------------------------
+# Android build + Play Store rollout
+# ------------------------------------------------------------------------------
+android:
+  gradleModule: app
+  outputType: aab            # aab | apk
+  playstore:
+    internal: internal
+    beta: beta
+    production: production
+    rollout:
+      initial: 10             # percentage for the first production push
+      increments: [25, 50, 100]
+
+# ------------------------------------------------------------------------------
+# iOS build + App Store Connect (Fastlane-based — see docs/ROADMAP.md for
+# prerequisites: a configured Fastfile, App Store Connect API key secret).
+# ------------------------------------------------------------------------------
+ios:
+  enabled: false
+  scheme: Runner
+  exportMethod: app-store
+  appstore:
+    groups: ["Internal Testers"]
+
+# ------------------------------------------------------------------------------
+# Quality gates
+# ------------------------------------------------------------------------------
+quality:
+  coverage:
+    threshold: 85
+    failUnder: true
+  lint:
+    failOnWarning: false
+
+# ------------------------------------------------------------------------------
+# Security gates
+# ------------------------------------------------------------------------------
+security:
+  dependency_scan: true
+  secret_scan: true
+  artifact_checksum: true
+
+# ------------------------------------------------------------------------------
+# Testing extensions
+# ------------------------------------------------------------------------------
+testing:
+  unit: true
+  integration: true
+  visual_regression:
+    enabled: false
+    provider: chromatic       # chromatic | percy
+  performance_regression:
+    enabled: false
+    metric: apk_size          # apk_size | startup_time
+    budgetPercent: 10         # fail if regression exceeds this % vs baseline
+
+# ------------------------------------------------------------------------------
+# Changelog generation
+# ------------------------------------------------------------------------------
+changelog:
+  enabled: true
+  format: conventional-commits
+
+# ------------------------------------------------------------------------------
+# Automatic dependency updates (generates Renovate/Dependabot config — see
+# docs/ROADMAP.md)
+# ------------------------------------------------------------------------------
+dependencies:
+  auto_update: true
+  provider: renovate          # renovate | dependabot
+
+# ------------------------------------------------------------------------------
+# Notifications
+# ------------------------------------------------------------------------------
+notifications:
+  slack:
+    enabled: true
+    webhookSecret: SLACK_WEBHOOK_URL
+  email:
+    enabled: false
+    to: ["releases@company.com"]
+    smtpSecret: SMTP_CREDENTIALS
+
+# ------------------------------------------------------------------------------
+# Monitoring — emits build/test/deploy metrics as JSON step summaries and an
+# optional artifact for ingestion into your dashboard of choice.
+# ------------------------------------------------------------------------------
+monitoring:
+  track_metrics: true

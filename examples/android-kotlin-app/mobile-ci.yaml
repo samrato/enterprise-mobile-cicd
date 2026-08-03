@@ -1,0 +1,27 @@
+version: 1
+framework: android
+
+environments:
+  development:
+    branch: develop
+    android:
+      applicationId: com.company.nativeapp.dev
+      backendUrl: https://api-dev.company.com
+  production:
+    branch: main
+    android:
+      applicationId: com.company.nativeapp
+      backendUrl: https://api.company.com
+
+android:
+  gradleModule: app
+  outputType: aab
+
+quality:
+  coverage:
+    threshold: 85
+    failUnder: true
+
+security:
+  dependency_scan: true
+  secret_scan: true

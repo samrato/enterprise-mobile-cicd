@@ -1,0 +1,26 @@
+version: 1
+framework: auto
+
+monorepo:
+  enabled: true
+  apps:
+    - name: consumer-app
+      path: apps/consumer
+      framework: flutter
+    - name: driver-app
+      path: apps/driver
+      framework: react-native
+    - name: partner-app
+      path: apps/partner
+      framework: android
+
+environments:
+  development:
+    branch: develop
+  production:
+    branch: main
+
+quality:
+  coverage:
+    threshold: 80
+    failUnder: true

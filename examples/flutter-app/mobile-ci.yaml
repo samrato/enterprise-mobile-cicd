@@ -1,0 +1,40 @@
+version: 1
+framework: flutter
+
+environments:
+  development:
+    branch: develop
+    android:
+      applicationId: com.company.flutterapp.dev
+      backendUrl: https://api-dev.company.com
+      firebaseProject: flutterapp-dev
+  production:
+    branch: main
+    android:
+      applicationId: com.company.flutterapp
+      backendUrl: https://api.company.com
+      firebaseProject: flutterapp-prod
+
+android:
+  outputType: aab
+  playstore:
+    internal: internal
+    beta: beta
+    production: production
+    rollout:
+      initial: 10
+      increments: [25, 50, 100]
+
+quality:
+  coverage:
+    threshold: 85
+    failUnder: true
+
+security:
+  dependency_scan: true
+  secret_scan: true
+
+notifications:
+  slack:
+    enabled: true
+    webhookSecret: SLACK_WEBHOOK_URL

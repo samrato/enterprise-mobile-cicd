@@ -1,0 +1,37 @@
+name: "Dispatch Pipeline Notifications"
+description: "Sends deployment status notifications to Slack and/or Email"
+inputs:
+  status:
+    description: "Pipeline status: success | failure"
+    required: true
+  app:
+    description: "Application name"
+    required: false
+    default: "Mobile App"
+  environment:
+    description: "Deployment environment (development | staging | production)"
+    required: true
+  version:
+    description: "Release version tag"
+    required: false
+    default: "v1.0.0"
+  slack-webhook-url:
+    description: "Slack webhook URL secret"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Notify Slack
+      if: ${{ inputs.slack-webhook-url != '' }}
+      shell: bash
+      run: |
+        RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        bash ${{ github.action_path }}/../../../scripts/notify-slack.sh \
+          "${{ inputs.slack-webhook-url }}" \
+          "${{ inputs.status }}" \
+          "${{ inputs.app }}" \
+          "${{ inputs.environment }}" \
+          "${{ inputs.version }}" \
+          "$RUN_URL"

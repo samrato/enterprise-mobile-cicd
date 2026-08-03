@@ -1,0 +1,27 @@
+name: "Unit & Integration Test Gate"
+description: "Runs automated unit tests and code coverage validation"
+inputs:
+  framework:
+    description: "Framework type (flutter | react-native | android)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Test Flutter Project
+      if: ${{ inputs.framework == 'flutter' }}
+      shell: bash
+      run: |
+        flutter test --coverage
+
+    - name: Test React Native Project
+      if: ${{ inputs.framework == 'react-native' }}
+      shell: bash
+      run: |
+        npm test -- --coverage --watchAll=false
+
+    - name: Test Android Gradle Project
+      if: ${{ inputs.framework == 'android' }}
+      shell: bash
+      run: |
+        ./gradlew test

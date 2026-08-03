@@ -1,0 +1,28 @@
+name: "Lint & Static Analysis Gate"
+description: "Runs code quality checks, static analysis, and code formatting rules"
+inputs:
+  framework:
+    description: "Framework type (flutter | react-native | android)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Lint Flutter Project
+      if: ${{ inputs.framework == 'flutter' }}
+      shell: bash
+      run: |
+        flutter format --set-exit-if-changed . || true
+        flutter analyze
+
+    - name: Lint React Native Project
+      if: ${{ inputs.framework == 'react-native' }}
+      shell: bash
+      run: |
+        npm run lint || npx eslint .
+
+    - name: Lint Android Gradle Project
+      if: ${{ inputs.framework == 'android' }}
+      shell: bash
+      run: |
+        ./gradlew lint

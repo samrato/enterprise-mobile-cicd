@@ -1,0 +1,32 @@
+version: 1
+framework: react-native
+
+environments:
+  development:
+    branch: develop
+    android:
+      applicationId: com.company.rnapp.dev
+      backendUrl: https://api-dev.company.com
+  production:
+    branch: main
+    android:
+      applicationId: com.company.rnapp
+      backendUrl: https://api.company.com
+
+android:
+  outputType: aab
+
+quality:
+  coverage:
+    threshold: 80
+    failUnder: true
+
+testing:
+  visual_regression:
+    enabled: true
+    provider: chromatic
+
+notifications:
+  slack:
+    enabled: true
+    webhookSecret: SLACK_WEBHOOK_URL

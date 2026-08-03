@@ -1,0 +1,59 @@
+name: "Deploy Production (Play Staged Rollout)"
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy-prod:
+    name: "Build & Deploy Production (10% Rollout)"
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Framework
+        id: detect
+        uses: ./.github/actions/detect-framework
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+        with:
+          framework: ${{ steps.detect.outputs.framework }}
+
+      - name: Build Artifact
+        id: build
+        uses: ./.github/actions/build
+        with:
+          framework: ${{ steps.detect.outputs.framework }}
+          output-type: "aab"
+
+      - name: Sign Artifact
+        uses: ./.github/actions/signing
+        with:
+          artifact-path: ${{ steps.build.outputs.artifact-path }}
+          keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          key-password: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Deploy to Play Production Track (10% Staged Rollout)
+        uses: ./.github/actions/deploy-play
+        with:
+          package-name: ${{ vars.ANDROID_APPLICATION_ID || 'com.company.app' }}
+          artifact-path: ${{ steps.build.outputs.artifact-path }}
+          track: "production"
+          user-fraction: "0.1"
+          service-account-json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+
+      - name: Send Notification
+        if: always()
+        uses: ./.github/actions/notify
+        with:
+          status: ${{ job.status }}
+          environment: "production"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

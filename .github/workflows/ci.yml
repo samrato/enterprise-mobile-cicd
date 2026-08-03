@@ -1,0 +1,73 @@
+name: "CI Pipeline Gate"
+
+on:
+  pull_request:
+    branches: [ develop, "release/*", main ]
+  workflow_dispatch:
+
+jobs:
+  validate-config:
+    name: "Validate mobile-ci.yaml"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Validation Dependencies
+        run: pip install pyyaml jsonschema
+
+      - name: Validate Config
+        run: python scripts/validate-config.py mobile-ci.yaml schemas/mobile-ci.schema.json
+
+  detect-framework:
+    name: "Detect Framework"
+    needs: [validate-config]
+    runs-on: ubuntu-latest
+    outputs:
+      framework: ${{ steps.detect.outputs.framework }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Detect Framework
+        id: detect
+        uses: ./.github/actions/detect-framework
+
+  quality-and-security:
+    name: "Lint, Test & Security Scan"
+    needs: [detect-framework]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+        with:
+          framework: ${{ needs.detect-framework.outputs.framework }}
+
+      - name: Lint Gate
+        uses: ./.github/actions/lint
+        with:
+          framework: ${{ needs.detect-framework.outputs.framework }}
+
+      - name: Test Gate
+        uses: ./.github/actions/test
+        with:
+          framework: ${{ needs.detect-framework.outputs.framework }}
+
+      - name: Security Gate
+        uses: ./.github/actions/security-scan
+        with:
+          framework: ${{ needs.detect-framework.outputs.framework }}
+
+      - name: Dry Run Build
+        uses: ./.github/actions/build
+        with:
+          framework: ${{ needs.detect-framework.outputs.framework }}
+          output-type: "apk"
