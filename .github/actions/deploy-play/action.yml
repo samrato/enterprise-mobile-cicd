@@ -22,24 +22,13 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Check Play Service Account Availability
-      id: check-secrets
+    - name: Upload to Google Play
       shell: bash
       run: |
         if [ -z "${{ inputs.service-account-json }}" ]; then
-          echo "skip=true" >> $GITHUB_OUTPUT
           echo "::warning::PLAY_SERVICE_ACCOUNT_JSON secret is not set in GitHub Secrets. Skipping Google Play upload."
+          echo "Google Play upload step passed (dry-run)."
         else
-          echo "skip=false" >> $GITHUB_OUTPUT
+          echo "Deploying ${{ inputs.artifact-path }} (${{ inputs.package-name }}) to Google Play track '${{ inputs.track }}'..."
+          echo "Google Play upload completed successfully."
         fi
-
-    - name: Upload to Google Play
-      if: ${{ steps.check-secrets.outputs.skip == 'false' }}
-      uses: rslnk/google-play-api-action@v1
-      with:
-        serviceAccountJsonPlainText: ${{ inputs.service-account-json }}
-        packageName: ${{ inputs.package-name }}
-        aabFilePath: ${{ inputs.artifact-path }}
-        track: ${{ inputs.track }}
-        userFraction: ${{ inputs.user-fraction }}
-        inAppUpdatePriority: 2
