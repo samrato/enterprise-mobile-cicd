@@ -9,7 +9,7 @@ on:
 
 jobs:
   validate-config:
-    name: "Validate mobile-ci.yaml Configs"
+    name: "Validate Configurations & Schemas"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -31,17 +31,49 @@ jobs:
             python scripts/validate-config.py "$file" schemas/mobile-ci.schema.json
           done
 
-  detect-framework:
-    name: "Detect Example Frameworks"
+  test-example-apps:
+    name: "Pipeline Test - ${{ matrix.app.name }}"
     needs: [validate-config]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - name: "React Native Sample"
+            path: "examples/react-native-app"
+            framework: "react-native"
+          - name: "Flutter Sample"
+            path: "examples/flutter-app"
+            framework: "flutter"
+          - name: "Android Kotlin Sample"
+            path: "examples/android-kotlin-app"
+            framework: "android"
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Test Framework Detection across Examples
+      - name: Detect Framework
+        id: detect
         run: |
-          for dir in examples/*; do
-            FRAMEWORK=$(bash scripts/detect-framework.sh "$dir")
-            echo "Directory $dir detected as: $FRAMEWORK"
-          done
+          FRAMEWORK=$(bash scripts/detect-framework.sh "${{ matrix.app.path }}")
+          echo "Detected framework: $FRAMEWORK"
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+        with:
+          framework: ${{ matrix.app.framework }}
+
+      - name: Run Lint Gate
+        uses: ./.github/actions/lint
+        with:
+          framework: ${{ matrix.app.framework }}
+
+      - name: Run Test Gate
+        uses: ./.github/actions/test
+        with:
+          framework: ${{ matrix.app.framework }}
+
+      - name: Run Security Gate
+        uses: ./.github/actions/security-scan
+        with:
+          framework: ${{ matrix.app.framework }}
