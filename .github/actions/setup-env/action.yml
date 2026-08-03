@@ -8,6 +8,10 @@ inputs:
     description: "Java Development Kit version"
     required: false
     default: "17"
+  working-directory:
+    description: "App working directory (defaults to '.')"
+    required: false
+    default: "."
 
 runs:
   using: "composite"
@@ -45,9 +49,14 @@ runs:
       if: ${{ inputs.framework == 'react-native' }}
       shell: bash
       run: |
-        if [ -f package-lock.json ]; then
-          npm ci
+        cd ${{ inputs.working-directory }}
+        if [ -f package.json ]; then
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            echo "No package-lock.json found. Running npm install..."
+            npm install --no-audit
+          fi
         else
-          echo "No package-lock.json found. Running npm install..."
-          npm install --no-audit
+          echo "No package.json found in '${{ inputs.working-directory }}'. Skipping npm install."
         fi
