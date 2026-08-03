@@ -16,38 +16,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect Framework
+      - name: "1. Detect Framework"
         id: detect
         uses: ./.github/actions/detect-framework
 
-      - name: Setup Environment
+      - name: "2. Setup Environment"
         uses: ./.github/actions/setup-env
         with:
           framework: ${{ steps.detect.outputs.framework }}
 
-      - name: Lint Gate
+      - name: "3. Lint Gate"
         uses: ./.github/actions/lint
         with:
           framework: ${{ steps.detect.outputs.framework }}
 
-      - name: Test Gate
+      - name: "4. Test Gate"
         uses: ./.github/actions/test
         with:
           framework: ${{ steps.detect.outputs.framework }}
 
-      - name: Security Scan Gate
+      - name: "5. Security Scan Gate"
         uses: ./.github/actions/security-scan
         with:
           framework: ${{ steps.detect.outputs.framework }}
 
-      - name: Build Artifact
+      - name: "6. Build Artifact"
         id: build
         uses: ./.github/actions/build
         with:
           framework: ${{ steps.detect.outputs.framework }}
           output-type: "aab"
 
-      - name: Sign Artifact
+      - name: "7. Sign Artifact"
         uses: ./.github/actions/signing
         with:
           artifact-path: ${{ steps.build.outputs.artifact-path }}
@@ -56,7 +56,7 @@ jobs:
           key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
           key-password: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Deploy to Play Production Track (10% Staged Rollout)
+      - name: "8. Deploy to Play Production Track (10% Staged Rollout)"
         uses: ./.github/actions/deploy-play
         with:
           package-name: ${{ vars.ANDROID_APPLICATION_ID || 'com.company.app' }}
@@ -65,7 +65,7 @@ jobs:
           user-fraction: "0.1"
           service-account-json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
 
-      - name: Send Notification
+      - name: "9. Send Notification"
         if: always()
         uses: ./.github/actions/notify
         with:
