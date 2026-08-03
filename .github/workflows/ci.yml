@@ -51,30 +51,64 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Detect Framework
+      - name: 1. Detect Framework
         id: detect
         run: |
           FRAMEWORK=$(bash scripts/detect-framework.sh "${{ matrix.app.path }}")
           echo "Detected framework: $FRAMEWORK"
 
-      - name: Setup Environment
+      - name: 2. Setup Environment
         uses: ./.github/actions/setup-env
         with:
           framework: ${{ matrix.app.framework }}
           working-directory: ${{ matrix.app.path }}
 
-      - name: Run Lint Gate
+      - name: 3. Lint Gate
         uses: ./.github/actions/lint
         with:
           framework: ${{ matrix.app.framework }}
 
-      - name: Run Test Gate
+      - name: 4. Test Gate
         uses: ./.github/actions/test
         with:
           framework: ${{ matrix.app.framework }}
 
-      - name: Run Security Gate
+      - name: 5. Security Scan Gate
         uses: ./.github/actions/security-scan
         with:
           framework: ${{ matrix.app.framework }}
+
+      - name: 6. Build Artifact
+        id: build
+        uses: ./.github/actions/build
+        with:
+          framework: ${{ matrix.app.framework }}
+          output-type: "apk"
+
+      - name: 7. Sign Artifact
+        uses: ./.github/actions/signing
+        with:
+          artifact-path: ${{ steps.build.outputs.artifact-path }}
+          keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          key-password: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: 8. Deploy to Play Console
+        uses: ./.github/actions/deploy-play
+        with:
+          package-name: "com.company.app"
+          artifact-path: ${{ steps.build.outputs.artifact-path }}
+          track: "internal"
+          service-account-json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+
+      - name: 9. Send Notification
+        if: always()
+        uses: ./.github/actions/notify
+        with:
+          status: ${{ job.status }}
+          environment: "CI Matrix Test"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
