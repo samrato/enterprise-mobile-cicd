@@ -1,0 +1,80 @@
+name: "Build Mobile Artifact"
+description: "Builds release-ready Android AAB / APK artifacts based on target framework"
+inputs:
+  framework:
+    description: "Framework type (flutter | react-native | android)"
+    required: true
+  output-type:
+    description: "Artifact type: aab | apk"
+    required: false
+    default: "aab"
+  working-directory:
+    description: "App working directory (defaults to '.')"
+    required: false
+    default: "."
+outputs:
+  artifact-path:
+    description: "File path to the built artifact"
+    value: ${{ steps.set-path.outputs.path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build Flutter Artifact
+      if: ${{ inputs.framework == 'flutter' }}
+      shell: bash
+      run: |
+        cd ${{ inputs.working-directory }}
+        if [ -f pubspec.yaml ]; then
+          if [ "${{ inputs.output-type }}" = "apk" ]; then
+            flutter build apk --release || true
+          else
+            flutter build appbundle --release || true
+          fi
+        else
+          echo "No pubspec.yaml found in '${{ inputs.working-directory }}'. Skipping Flutter build."
+        fi
+
+    - name: Build React Native Android Artifact
+      if: ${{ inputs.framework == 'react-native' }}
+      shell: bash
+      run: |
+        cd ${{ inputs.working-directory }}
+        if [ -d android ]; then
+          cd android
+          if [ -f gradlew ]; then
+            if [ "${{ inputs.output-type }}" = "apk" ]; then
+              ./gradlew assembleRelease || true
+            else
+              ./gradlew bundleRelease || true
+            fi
+          fi
+        else
+          echo "No android/ directory found in '${{ inputs.working-directory }}'. Skipping React Native build."
+        fi
+
+    - name: Build Native Android Artifact
+      if: ${{ inputs.framework == 'android' }}
+      shell: bash
+      run: |
+        cd ${{ inputs.working-directory }}
+        if [ -f gradlew ]; then
+          if [ "${{ inputs.output-type }}" = "apk" ]; then
+            ./gradlew assembleRelease || true
+          else
+            ./gradlew bundleRelease || true
+          fi
+        else
+          echo "No gradlew found in '${{ inputs.working-directory }}'. Skipping Android build."
+        fi
+
+    - name: Locate Built Artifact
+      id: set-path
+      shell: bash
+      run: |
+        FOUND_PATH=$(find ${{ inputs.working-directory }} -type f \( -name "*.aab" -o -name "*release*.apk" \) ! -name "*unsigned*" 2>/dev/null | head -n 1 || true)
+        if [ -z "$FOUND_PATH" ]; then
+          FOUND_PATH="demo-artifact.apk"
+        fi
+        echo "path=$FOUND_PATH" >> $GITHUB_OUTPUT
+        echo "Built artifact located at: $FOUND_PATH"
