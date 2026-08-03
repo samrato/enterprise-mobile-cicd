@@ -35,19 +35,19 @@ runs:
         channel: 'stable'
         cache: true
 
-    - name: Setup Node.js & npm Cache
+    - name: Setup Node.js
       if: ${{ inputs.framework == 'react-native' }}
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
 
     - name: Install React Native Dependencies
       if: ${{ inputs.framework == 'react-native' }}
       shell: bash
-      run: npm ci
-
-    - name: Install Flutter Dependencies
-      if: ${{ inputs.framework == 'flutter' }}
-      shell: bash
-      run: flutter pub get
+      run: |
+        if [ -f package-lock.json ]; then
+          npm ci
+        else
+          echo "No package-lock.json found. Running npm install..."
+          npm install --no-audit
+        fi

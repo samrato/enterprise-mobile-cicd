@@ -12,7 +12,8 @@ inputs:
     required: true
   service-account-json:
     description: "Play Service Account JSON credentials"
-    required: true
+    required: false
+    default: ""
   user-fraction:
     description: "Staged rollout fraction (e.g. 0.1 for 10%)"
     required: false
@@ -21,7 +22,19 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Check Play Service Account Availability
+      id: check-secrets
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.service-account-json }}" ]; then
+          echo "skip=true" >> $GITHUB_OUTPUT
+          echo "::warning::PLAY_SERVICE_ACCOUNT_JSON secret is not set in GitHub Secrets. Skipping Google Play upload."
+        else
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Upload to Google Play
+      if: ${{ steps.check-secrets.outputs.skip == 'false' }}
       uses: rslnk/google-play-api-action@v1
       with:
         serviceAccountJsonPlainText: ${{ inputs.service-account-json }}

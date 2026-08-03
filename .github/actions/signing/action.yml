@@ -3,24 +3,41 @@ description: "Decodes base64 Android keystore, signs the build artifact with apk
 inputs:
   artifact-path:
     description: "Path to unsigned AAB / APK"
-    required: true
+    required: false
+    default: ""
   keystore-base64:
     description: "Base64 encoded keystore"
-    required: true
+    required: false
+    default: ""
   keystore-password:
     description: "Keystore password"
-    required: true
+    required: false
+    default: ""
   key-alias:
     description: "Key alias"
-    required: true
+    required: false
+    default: ""
   key-password:
     description: "Key password"
-    required: true
+    required: false
+    default: ""
 
 runs:
   using: "composite"
   steps:
+    - name: Check Keystore Secrets Availability
+      id: check-secrets
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.keystore-base64 }}" ]; then
+          echo "skip=true" >> $GITHUB_OUTPUT
+          echo "::warning::ANDROID_KEYSTORE_BASE64 secret is not set in GitHub Secrets. Skipping artifact signing."
+        else
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Decode Keystore
+      if: ${{ steps.check-secrets.outputs.skip == 'false' }}
       shell: bash
       run: |
         KEYSTORE_FILE="${RUNNER_TEMP}/release.keystore"
@@ -28,6 +45,7 @@ runs:
         echo "KEYSTORE_FILE=$KEYSTORE_FILE" >> $GITHUB_ENV
 
     - name: Sign Artifact with jarsigner / apksigner
+      if: ${{ steps.check-secrets.outputs.skip == 'false' }}
       shell: bash
       run: |
         if [[ "${{ inputs.artifact-path }}" == *.aab ]]; then
@@ -41,10 +59,10 @@ runs:
         fi
 
     - name: Secure Cleanup Keystore
-      if: always()
+      if: always() && steps.check-secrets.outputs.skip == 'false'
       shell: bash
       run: |
-        if [ -f "$KEYSTORE_FILE" ]; then
+        if [ -n "${KEYSTORE_FILE:-}" ] && [ -f "$KEYSTORE_FILE" ]; then
           shred -u "$KEYSTORE_FILE" || rm -f "$KEYSTORE_FILE"
           echo "Keystore file safely shredded."
         fi
